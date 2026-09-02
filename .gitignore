@@ -1,0 +1,15 @@
+docs/
+CLAUDE.md
+
+temp
+
+# Build output — everything here is regenerable with `make`.
+build/
+*.elf
+*.map
+*.o
+*.bin
+*.uf2
+
+# macOS
+.DS_Store
