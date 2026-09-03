@@ -14,10 +14,10 @@ CFLAGS  = -mcpu=cortex-m0plus -mthumb -nostdlib -ffreestanding -Wall -Wextra -O1
 
 # -T           : our linker script decides every address
 # -Wl,-Map     : write a map file — the record of what landed where, and why
-LDFLAGS = -T linker/sram.ld -Wl,-Map=build/main.map
+LDFLAGS = -T fw/sram.ld -Wl,-Map=build/main.map
 
-SRCS   = src/crt0.s src/main.c
-LDFILE = linker/sram.ld
+SRCS   = fw/crt0.s fw/main.c
+LDFILE = fw/sram.ld
 ELF    = build/main.elf
 
 .PHONY: all inspect disasm pico-ping load clean
