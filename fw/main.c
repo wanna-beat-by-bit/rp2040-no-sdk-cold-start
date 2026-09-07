@@ -12,7 +12,6 @@ static void delay_loops(volatile uint32_t n) {
 volatile uint32_t g_panic_reason;
 volatile uint32_t zeroed;
 volatile uint32_t initialized = DATA_CANARY;
-const volatile uint32_t z = 0xCA;
 
 static void panic(uint32_t reason) {
     g_panic_reason = reason;

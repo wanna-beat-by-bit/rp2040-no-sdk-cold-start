@@ -16,11 +16,27 @@ _start:
 
 .L_bss_loop:    
     cmp r0,r1
-    bhs .L_bss_end
+    bhs .L_bss_loop_end
     str r2, [r0]
     adds r0, #4
     b .L_bss_loop
 
-.L_bss_end:
+
+.L_bss_loop_end:
+
+    ldr r0, =__data_start__
+    ldr r1, =__data_end__
+    ldr r2, =__data_load__
+
+.L_data_loop:
+    cmp r0,r1
+    bhs .L_data_loop_end
+    ldr r3, [r2]
+    str r3, [r0]
+    adds r0, #4
+    adds r2, #4
+    b .L_data_loop
+
+.L_data_loop_end:
     bl main
-trap: b trap
+.L_trap: b .L_trap
