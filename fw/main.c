@@ -21,7 +21,7 @@ static void panic(uint32_t reason) {
 }
 
 int main(){
-    __vectors_start = 0xE000ED08;
+    REG(PPB_BASE + SCB_VTOR) = (uint32_t)&__vectors_start;
 
     REG(RESETS_BASE + APB_ATOMIC_CLR + RESETS_RESET) = (1u << RESETS_RESET_IO_BANK0_LSB)
                                                      | (1u << RESETS_RESET_PADS_BANK0_LSB);
