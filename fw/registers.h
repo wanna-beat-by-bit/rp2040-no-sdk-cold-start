@@ -36,4 +36,7 @@
 
 #define GPIO25_BIT 25u
 
+#define PPB_BASE 0xe0000000
+#define VTOR 0xed08
+
 #endif

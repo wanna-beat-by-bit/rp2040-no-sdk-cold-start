@@ -13,12 +13,16 @@ volatile uint32_t g_panic_reason;
 volatile uint32_t zeroed;
 volatile uint32_t initialized = DATA_CANARY;
 
+extern uint32_t __vectors_start;
+
 static void panic(uint32_t reason) {
     g_panic_reason = reason;
     for(;;);
 }
 
 int main(){
+    __vectors_start = 0xE000ED08;
+
     REG(RESETS_BASE + APB_ATOMIC_CLR + RESETS_RESET) = (1u << RESETS_RESET_IO_BANK0_LSB)
                                                      | (1u << RESETS_RESET_PADS_BANK0_LSB);
 

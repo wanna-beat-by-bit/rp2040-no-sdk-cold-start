@@ -16,7 +16,7 @@ CFLAGS  = -mcpu=cortex-m0plus -mthumb -nostdlib -ffreestanding -Wall -Wextra -O1
 # -Wl,-Map     : write a map file — the record of what landed where, and why
 LDFLAGS = -T fw/sram.ld -Wl,-Map=build/main.map
 
-SRCS   = fw/crt0.s fw/main.c
+SRCS   = fw/crt0.s fw/main.c fw/vectors.c
 LDFILE = fw/sram.ld
 ELF    = build/main.elf
 

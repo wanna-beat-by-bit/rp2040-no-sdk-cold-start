@@ -8,6 +8,16 @@ MEMORY
 
 SECTIONS
 {
+    .vectors : {
+        . = ALIGN(256);
+        __vectors_start = .;
+
+        KEEP(*(.vectors)) 
+
+        . = ALIGN(4);
+        __vectors_end = .;
+    } > SRAM
+
     .text :
     {
         . = ALIGN(4);
