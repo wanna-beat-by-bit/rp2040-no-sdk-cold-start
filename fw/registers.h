@@ -14,6 +14,7 @@
 #define RESETS_RESET_DONE 0x8u
 #define RESETS_RESET_IO_BANK0_LSB 5u
 #define RESETS_RESET_PADS_BANK0_LSB 8u
+#define RESETS_RESET_TIMER 21u
 
 #define IO_BANK0_BASE 0x40014000u
 #define IO_BANK0_GPIO25_CTRL 0x0ccu
@@ -38,5 +39,15 @@
 
 #define PPB_BASE 0xe0000000u
 #define SCB_VTOR 0xed08u
+#define NVIC_ISER 0xe100u
+#define NVIC_ISER_TIMER_IRQ_0 0u
+
+#define TIMER_BASE 0x40054000u
+#define TIMER_TIMERAWL 0x28u
+#define TIMER_ALARM0 0x10u
+#define TIMER_INTE 0x38u
+#define TIMER_INTE_ALARM_0 0u
+#define TIMER_INTR_ALARM_0 0u
+#define TIMER_INTR 0x34
 
 #endif
