@@ -22,10 +22,28 @@ static void alarm_set(void){
     REG(TIMER_BASE + TIMER_ALARM0) = current_time + DELAY_FASTER;
 }
 
+static void spin(volatile uint32_t n) { while (n) { n--; } }
+
 void TIMER_IRQ_0_Handler(void){
     REG(TIMER_BASE + TIMER_INTR) = (1u << TIMER_INTR_ALARM_0); // w1c
     REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
     alarm_set();
+}
+
+static void blink(void){
+    REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
+    spin(40000);
+    REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
+    spin(40000);
+}
+
+void HardFault_Handler(void){
+    for (;;){
+        blink();
+        blink();
+        blink();
+        spin(1000000);
+    }
 }
 
 int main(){
