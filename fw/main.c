@@ -1,13 +1,9 @@
 #include <stdint.h>
 #include "registers.h"
 
-#define DELAY_LOOPS_FASTER 150000u
-#define DELAY_LOOPS_SLOWER 1500000u
+#define DELAY_FASTER 150000u
+#define DELAY_SLOWER 1500000u
 #define DATA_CANARY 0xABCDu
-
-static void delay_loops(volatile uint32_t n) {
-    while (n) { n--; }
-}
 
 volatile uint32_t g_panic_reason;
 volatile uint32_t zeroed;
@@ -20,10 +16,10 @@ static void panic(uint32_t reason) {
     for(;;);
 }
 
-void alarm_set(void){
+// alarm_set arms alarm to hardcoded duration.
+static void alarm_set(void){
     uint32_t current_time = REG(TIMER_BASE + TIMER_TIMERAWL);
-    REG(TIMER_BASE + TIMER_INTE) |= (1u << TIMER_INTE_ALARM_0); 
-    REG(TIMER_BASE + TIMER_ALARM0) = current_time + 500000;
+    REG(TIMER_BASE + TIMER_ALARM0) = current_time + DELAY_FASTER;
 }
 
 void TIMER_IRQ_0_Handler(void){
@@ -44,6 +40,9 @@ int main(){
     while( !(REG(RESETS_BASE + RESETS_RESET_DONE) & (1u << RESETS_RESET_PADS_BANK0_LSB)) ){;}
     while( !( REG(RESETS_BASE + RESETS_RESET_DONE) & (1u << RESETS_RESET_TIMER) )) {;}
 
+    // allow CPU process our IRQ with our implemented TIMER_IRQ_0 handler 
+    REG(TIMER_BASE + TIMER_INTE) |= (1u << TIMER_INTE_ALARM_0); 
+
     volatile uint32_t *const gpio25_ctrl_addr = (volatile uint32_t *)(IO_BANK0_BASE + IO_BANK0_GPIO25_CTRL);
     uint32_t gpio25_ctrl = REG(gpio25_ctrl_addr);
     gpio25_ctrl &= ~IO_BANK0_GPIO_CTRL_FUNCSEL_MASK;
@@ -61,12 +60,5 @@ int main(){
 
     alarm_set();
 
-    for(;;){
-        REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
-        if (initialized == DATA_CANARY && zeroed == 0){
-            delay_loops(DELAY_LOOPS_FASTER);
-        }else{
-            delay_loops(DELAY_LOOPS_SLOWER);
-        }
-    }
+    for(;;);
 }

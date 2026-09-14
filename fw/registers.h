@@ -45,9 +45,9 @@
 #define TIMER_BASE 0x40054000u
 #define TIMER_TIMERAWL 0x28u
 #define TIMER_ALARM0 0x10u
+#define TIMER_INTR 0x34u
 #define TIMER_INTE 0x38u
 #define TIMER_INTE_ALARM_0 0u
 #define TIMER_INTR_ALARM_0 0u
-#define TIMER_INTR 0x34
 
 #endif
