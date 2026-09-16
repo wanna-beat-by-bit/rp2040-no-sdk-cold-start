@@ -65,6 +65,19 @@ void HardFault_Handler(void){
     }
 }
 
+static uint32_t is_xosc_stable(void) {
+    uint32_t xosc_info = REG(XOSC_BASE + XOSC_STATUS);
+    return (xosc_info & (1u << XOSC_STATUS_STABLE)) ? 1: 0;
+}
+
+static void configure_xosc(void) {
+    // set xosc freq range
+    REG(XOSC_BASE + XOSC_STARTUP) = XOSC_STARTUP_DELAY; 
+    // enable and turn freq mode
+    REG(XOSC_BASE + XOSC_CTRL) = (XOSC_CTRL_ENABLE << XOSC_CTRL_ENABLE_LSB) | XOSC_CTRL_1_15_RANGE;
+    while (!(is_xosc_stable())) {;}
+}
+
 int main(){
     REG(PPB_BASE + SCB_VTOR) = (uint32_t)&__vectors_start;
     REG(PPB_BASE + NVIC_ISER) = (1u << NVIC_ISER_TIMER_IRQ_0);
@@ -98,9 +111,10 @@ int main(){
     // turn off alarm for now
     // alarm_set();
     configure_clock();
+    configure_xosc();
 
     for(;;){
-        if(is_clk_valid()){
+        if(is_xosc_stable()){
             blink();
             blink();
             spin(340000);
