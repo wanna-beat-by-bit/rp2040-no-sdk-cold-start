@@ -4,6 +4,9 @@
 #define DELAY_FASTER 150000u
 #define DELAY_SLOWER 1500000u
 #define DATA_CANARY 0xABCDu
+#define DEFUALT_CLOCK_KHZ 12000
+#define CLOCKS_FC0_INTERVAL_RESET 0x08u
+#define CLK_SYS_KHZ 12000
 
 volatile uint32_t g_panic_reason;
 volatile uint32_t zeroed;
@@ -23,6 +26,22 @@ static void alarm_set(void){
 }
 
 static void spin(volatile uint32_t n) { while (n) { n--; } }
+
+static void configure_clock(void) {
+    REG(CLOCKS_BASE + CLOCKS_FC0_REF_KHZ) = DEFUALT_CLOCK_KHZ; 
+    REG(CLOCKS_BASE + CLOCKS_FC0_MIN_KHZ) = 0;
+    REG(CLOCKS_BASE + CLOCKS_FC0_MAX_KHZ) = 0xFFFFFFFF;
+    REG(CLOCKS_BASE + CLOCKS_FC0_INTERVAL) = CLOCKS_FC0_INTERVAL_RESET;
+}
+
+static int is_clk_valid(void) {
+    REG(CLOCKS_BASE + CLOCKS_FC0_SRC) = CLOCKS_FC0_SRC_CLK_SYS;
+    while( !(REG(CLOCKS_BASE + CLOCKS_FC0_STATUS) & (1u << CLOCKS_FC0_STATUS_DONE))) {;}
+    uint32_t result = REG(CLOCKS_BASE + CLOCKS_FC0_RESULT);
+    result = result >> 5;
+    int is_valid =  ((result >= CLK_SYS_KHZ - 120) && (result <= CLK_SYS_KHZ + 120)) ? 1: 0;
+    return is_valid;
+}
 
 void TIMER_IRQ_0_Handler(void){
     REG(TIMER_BASE + TIMER_INTR) = (1u << TIMER_INTR_ALARM_0); // w1c
@@ -76,7 +95,18 @@ int main(){
     uint32_t gpio25_gpio_oe = read_gpio_oe & (1u << GPIO25_BIT);
     if( !gpio25_gpio_oe ) { panic(107); }
 
-    alarm_set();
+    // turn off alarm for now
+    // alarm_set();
+    configure_clock();
 
-    for(;;);
+    for(;;){
+        if(is_clk_valid()){
+            blink();
+            blink();
+            spin(340000);
+        } else{
+            blink();
+            spin(100000);
+        }
+    }
 }
