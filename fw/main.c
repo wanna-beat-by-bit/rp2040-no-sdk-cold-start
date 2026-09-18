@@ -34,6 +34,12 @@ static void configure_clock(void) {
     REG(CLOCKS_BASE + CLOCKS_FC0_INTERVAL) = CLOCKS_FC0_INTERVAL_RESET;
 }
 
+static int is_clk_ref_a_xosc(void) {
+    uint32_t clk_ref_ctrl_src = REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL);
+    uint32_t xosc_mask = (1u << 2) - 1;
+    return ((clk_ref_ctrl_src & xosc_mask) == CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC) ? 1 : 0;
+}
+
 static int is_clk_valid(void) {
     REG(CLOCKS_BASE + CLOCKS_FC0_SRC) = CLOCKS_FC0_SRC_CLK_SYS;
     while( !(REG(CLOCKS_BASE + CLOCKS_FC0_STATUS) & (1u << CLOCKS_FC0_STATUS_DONE))) {;}
