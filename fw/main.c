@@ -40,6 +40,10 @@ static int is_clk_ref_a_xosc(void) {
     return ((clk_ref_ctrl_src & xosc_mask) == CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC) ? 1 : 0;
 }
 
+static void set_clk_ref_xosc(void) {
+    REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL) |= CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC;
+}
+
 static int is_clk_valid(void) {
     REG(CLOCKS_BASE + CLOCKS_FC0_SRC) = CLOCKS_FC0_SRC_CLK_SYS;
     while( !(REG(CLOCKS_BASE + CLOCKS_FC0_STATUS) & (1u << CLOCKS_FC0_STATUS_DONE))) {;}
@@ -84,6 +88,11 @@ static void configure_xosc(void) {
     while (!(is_xosc_stable())) {;}
 }
 
+static void wait_xosc_status(void){
+    uint32_t xosc_mask = (1u << 2) - 1;
+    while( (REG(CLOCKS_BASE + CLOCKS_CLK_REF_SELECTED) & xosc_mask) != CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC ) {;}
+}
+
 int main(){
     REG(PPB_BASE + SCB_VTOR) = (uint32_t)&__vectors_start;
     REG(PPB_BASE + NVIC_ISER) = (1u << NVIC_ISER_TIMER_IRQ_0);
@@ -118,6 +127,11 @@ int main(){
     // alarm_set();
     configure_clock();
     configure_xosc();
+
+    if (!is_clk_ref_a_xosc()){
+        set_clk_ref_xosc();
+        wait_xosc_status();
+    }
 
     for(;;){
         if(is_xosc_stable()){
