@@ -102,11 +102,13 @@ int main(){
 
     REG(RESETS_BASE + APB_ATOMIC_CLR + RESETS_RESET) = (1u << RESETS_RESET_IO_BANK0_LSB)
                                                      | (1u << RESETS_RESET_PADS_BANK0_LSB)
-                                                     | (1u << RESETS_RESET_TIMER);
+                                                     | (1u << RESETS_RESET_TIMER)
+                                                     | (1u << RESETS_RESET_PLL_SYS_LSB);
 
     while( !(REG(RESETS_BASE + RESETS_RESET_DONE) & (1u << RESETS_RESET_IO_BANK0_LSB)) ){;}
     while( !(REG(RESETS_BASE + RESETS_RESET_DONE) & (1u << RESETS_RESET_PADS_BANK0_LSB)) ){;}
     while( !( REG(RESETS_BASE + RESETS_RESET_DONE) & (1u << RESETS_RESET_TIMER) )) {;}
+    while( !( REG(RESETS_BASE + RESETS_RESET_DONE) & (1u << RESETS_RESET_PLL_SYS_LSB) )) {;}
 
     // allow CPU process our IRQ with our implemented TIMER_IRQ_0 handler 
     REG(TIMER_BASE + TIMER_INTE) |= (1u << TIMER_INTE_ALARM_0); 
