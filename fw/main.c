@@ -36,21 +36,14 @@ static void configure_clock(void) {
 
 static int is_clk_ref_a_xosc(void) {
     uint32_t clk_ref_ctrl_src = REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL);
-    uint32_t xosc_mask = (1u << 2) - 1;
-    return ((clk_ref_ctrl_src & xosc_mask) == CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC) ? 1 : 0;
+    return ((clk_ref_ctrl_src & CLOCKS_CLK_REF_CTRL_SRC_MASK) == CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC) ? 1 : 0;
 }
 
 static void set_clk_ref_xosc(void) {
-    REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL) |= CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC;
-}
-
-static int is_clk_valid(void) {
-    REG(CLOCKS_BASE + CLOCKS_FC0_SRC) = CLOCKS_FC0_SRC_CLK_SYS;
-    while( !(REG(CLOCKS_BASE + CLOCKS_FC0_STATUS) & (1u << CLOCKS_FC0_STATUS_DONE))) {;}
-    uint32_t result = REG(CLOCKS_BASE + CLOCKS_FC0_RESULT);
-    result = result >> 5;
-    int is_valid =  ((result >= CLK_SYS_KHZ - 120) && (result <= CLK_SYS_KHZ + 120)) ? 1: 0;
-    return is_valid;
+    uint32_t clk_ref_ctrl = REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL);
+    clk_ref_ctrl &= ~CLOCKS_CLK_REF_CTRL_SRC_MASK;
+    clk_ref_ctrl |= CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC;
+    REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL) = clk_ref_ctrl;
 }
 
 void TIMER_IRQ_0_Handler(void){
@@ -61,9 +54,9 @@ void TIMER_IRQ_0_Handler(void){
 
 static void blink(void){
     REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
-    spin(40000);
+    spin(90000);
     REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
-    spin(40000);
+    spin(90000);
 }
 
 void HardFault_Handler(void){
@@ -88,9 +81,9 @@ static void configure_xosc(void) {
     while (!(is_xosc_stable())) {;}
 }
 
-static void wait_xosc_status(void){
-    uint32_t xosc_mask = (1u << 2) - 1;
-    while( (REG(CLOCKS_BASE + CLOCKS_CLK_REF_SELECTED) & xosc_mask) != CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC ) {;}
+static void  wait_clk_ref_selected(void){
+    while (!(REG(CLOCKS_BASE + CLOCKS_CLK_REF_SELECTED) & (1u << CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC))) {;}
+
 }
 
 int main(){
@@ -128,19 +121,19 @@ int main(){
     configure_clock();
     configure_xosc();
 
-    if (!is_clk_ref_a_xosc()){
-        set_clk_ref_xosc();
-        wait_xosc_status();
-    }
+    set_clk_ref_xosc();
+    wait_clk_ref_selected();
 
-    for(;;){
-        if(is_xosc_stable()){
+    if (is_clk_ref_a_xosc()){
+        for(;;){
             blink();
             blink();
-            spin(340000);
-        } else{
+            spin(500000);
+        }
+    } else{
+        for(;;){
             blink();
-            spin(100000);
+            spin(500000);
         }
     }
 }
