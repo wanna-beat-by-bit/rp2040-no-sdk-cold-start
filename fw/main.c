@@ -1,12 +1,13 @@
 #include <stdint.h>
 #include "registers.h"
 
+#define SECOND_DELAY 500000u
 #define DELAY_FASTER 150000u
 #define DELAY_SLOWER 1500000u
 #define DATA_CANARY 0xABCDu
 #define DEFUALT_CLOCK_KHZ 12000
+#define DEFUALT_CLOCK_MHZ 12
 #define CLOCKS_FC0_INTERVAL_RESET 0x08u
-#define CLK_SYS_KHZ 12000
 
 volatile uint32_t g_panic_reason;
 volatile uint32_t zeroed;
@@ -22,7 +23,7 @@ static void panic(uint32_t reason) {
 // alarm_set arms alarm to hardcoded duration.
 static void alarm_set(void){
     uint32_t current_time = REG(TIMER_BASE + TIMER_TIMERAWL);
-    REG(TIMER_BASE + TIMER_ALARM0) = current_time + DELAY_FASTER;
+    REG(TIMER_BASE + TIMER_ALARM0) = current_time + SECOND_DELAY;
 }
 
 static void spin(volatile uint32_t n) { while (n) { n--; } }
@@ -34,22 +35,11 @@ static void configure_clock(void) {
     REG(CLOCKS_BASE + CLOCKS_FC0_INTERVAL) = CLOCKS_FC0_INTERVAL_RESET;
 }
 
-static int is_clk_ref_a_xosc(void) {
-    uint32_t clk_ref_ctrl_src = REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL);
-    return ((clk_ref_ctrl_src & CLOCKS_CLK_REF_CTRL_SRC_MASK) == CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC) ? 1 : 0;
-}
-
 static void set_clk_ref_xosc(void) {
     uint32_t clk_ref_ctrl = REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL);
     clk_ref_ctrl &= ~CLOCKS_CLK_REF_CTRL_SRC_MASK;
     clk_ref_ctrl |= CLOCKS_CLK_REF_CTRL_XOSC_CLKSRC;
     REG(CLOCKS_BASE + CLOCKS_CLK_REF_CTRL) = clk_ref_ctrl;
-}
-
-void TIMER_IRQ_0_Handler(void){
-    REG(TIMER_BASE + TIMER_INTR) = (1u << TIMER_INTR_ALARM_0); // w1c
-    REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
-    alarm_set();
 }
 
 static void blink(void){
@@ -58,6 +48,26 @@ static void blink(void){
     REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
     spin(90000);
 }
+
+static void blink2(void){
+    REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
+}
+
+void TIMER_IRQ_0_Handler(void){
+    REG(TIMER_BASE + TIMER_INTR) = (1u << TIMER_INTR_ALARM_0); // w1c
+    blink2();
+    alarm_set();
+}
+
+static void set_wait_watchdog_tick(void) {
+    uint32_t watchdog_reg = REG(WATCHDOG_BASE + WATCHDOG_TICK);
+    watchdog_reg &= ~((1u << (WATCHDOG_TICK_CYCLES_MSB + 1)) - 1);
+    watchdog_reg |= DEFUALT_CLOCK_MHZ;
+    watchdog_reg |= 1u << WATCHDOG_TICK_ENABLE;
+    REG(WATCHDOG_BASE + WATCHDOG_TICK) = watchdog_reg;
+    while( !(REG(WATCHDOG_BASE + WATCHDOG_TICK) & (1u << WATCHDOG_TICK_RUNNING))) {;}
+}
+
 
 void HardFault_Handler(void){
     for (;;){
@@ -117,23 +127,14 @@ int main(){
     if( !gpio25_gpio_oe ) { panic(107); }
 
     // turn off alarm for now
-    // alarm_set();
     configure_clock();
     configure_xosc();
 
     set_clk_ref_xosc();
     wait_clk_ref_selected();
 
-    if (is_clk_ref_a_xosc()){
-        for(;;){
-            blink();
-            blink();
-            spin(500000);
-        }
-    } else{
-        for(;;){
-            blink();
-            spin(500000);
-        }
-    }
+    set_wait_watchdog_tick();
+    alarm_set();
+
+    for(;;);
 }
