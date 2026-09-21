@@ -9,6 +9,10 @@
 #define DEFUALT_CLOCK_MHZ 12
 #define CLOCKS_FC0_INTERVAL_RESET 0x08u
 
+/* loop counts, calibrated for a 125 MHz core - roughly 10x the 12 MHz values */
+#define BLINK_SPIN 900000u
+#define GAP_SPIN 10000000u
+
 volatile uint32_t g_panic_reason;
 volatile uint32_t zeroed;
 volatile uint32_t initialized = DATA_CANARY;
@@ -44,9 +48,9 @@ static void set_clk_ref_xosc(void) {
 
 static void blink(void){
     REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
-    spin(90000);
+    spin(BLINK_SPIN);
     REG(SIO_BASE + SIO_GPIO_OUT_XOR) = (1u << GPIO25_BIT);
-    spin(90000);
+    spin(BLINK_SPIN);
 }
 
 static void blink2(void){
@@ -96,6 +100,52 @@ static void  wait_clk_ref_selected(void){
 
 }
 
+static void pll_sys_init(void) {
+    uint32_t pll_cs = REG(PLL_SYS_BASE + PLL_CS);
+    pll_cs &= ~PLL_CS_REFDIV_MASK;
+    pll_cs |= PLL_SYS_REFDIV << PLL_CS_REFDIV_LSB;
+    REG(PLL_SYS_BASE + PLL_CS) = pll_cs;
+
+    REG(PLL_SYS_BASE + PLL_FBDIV_INT) = PLL_SYS_FBDIV;
+
+    REG(PLL_SYS_BASE + PLL_PWR) &= ~((1u << PLL_PWR_PD_BIT) | (1u << PLL_PWR_VCOPD_BIT));
+
+    while (!(REG(PLL_SYS_BASE + PLL_CS) & (1u << PLL_CS_LOCK_BIT))) {;}
+
+    uint32_t pll_prim = REG(PLL_SYS_BASE + PLL_PRIM);
+    pll_prim &= ~(PLL_PRIM_POSTDIV1_MASK | PLL_PRIM_POSTDIV2_MASK);
+    pll_prim |= (PLL_SYS_POSTDIV1 << PLL_PRIM_POSTDIV1_LSB)
+              | (PLL_SYS_POSTDIV2 << PLL_PRIM_POSTDIV2_LSB);
+    REG(PLL_SYS_BASE + PLL_PRIM) = pll_prim;
+
+    REG(PLL_SYS_BASE + PLL_PWR) &= ~(1u << PLL_PWR_POSTDIVPD_BIT);
+}
+
+static void set_clk_sys_pll(void) {
+    uint32_t clk_sys_ctrl = REG(CLOCKS_BASE + CLOCKS_CLK_SYS_CTRL);
+    clk_sys_ctrl &= ~CLOCKS_CLK_SYS_CTRL_AUXSRC_MASK;
+    clk_sys_ctrl |= CLOCKS_CLK_SYS_CTRL_CLKSRC_PLL_SYS << CLOCKS_CLK_SYS_CTRL_AUXSRC_LSB;
+    REG(CLOCKS_BASE + CLOCKS_CLK_SYS_CTRL) = clk_sys_ctrl;
+
+    clk_sys_ctrl &= ~CLOCKS_CLK_SYS_CTRL_SRC_MASK;
+    clk_sys_ctrl |= CLOCKS_CLK_SYS_CTRL_CLKSRC_CLK_SYS_AUX;
+    REG(CLOCKS_BASE + CLOCKS_CLK_SYS_CTRL) = clk_sys_ctrl;
+
+    while (!(REG(CLOCKS_BASE + CLOCKS_CLK_SYS_SELECTED)
+             & (1u << CLOCKS_CLK_SYS_CTRL_CLKSRC_CLK_SYS_AUX))) {;}
+}
+
+static uint32_t fc0_measure_khz(uint32_t src) {
+    uint32_t fc0_src = REG(CLOCKS_BASE + CLOCKS_FC0_SRC);
+    fc0_src &= ~CLOCKS_FC0_SRC_MASK;
+    fc0_src |= src;
+    REG(CLOCKS_BASE + CLOCKS_FC0_SRC) = fc0_src;
+
+    while (!(REG(CLOCKS_BASE + CLOCKS_FC0_STATUS) & (1u << CLOCKS_FC0_STATUS_DONE))) {;}
+
+    return REG(CLOCKS_BASE + CLOCKS_FC0_RESULT) >> CLOCKS_FC0_RESULT_KHZ_LSB;
+}
+
 int main(){
     REG(PPB_BASE + SCB_VTOR) = (uint32_t)&__vectors_start;
     REG(PPB_BASE + NVIC_ISER) = (1u << NVIC_ISER_TIMER_IRQ_0);
@@ -136,7 +186,25 @@ int main(){
     wait_clk_ref_selected();
 
     set_wait_watchdog_tick();
+
+    pll_sys_init();
+    set_clk_sys_pll();
+
     alarm_set();
 
-    for(;;);
+    // uint32_t clk_sys_khz = fc0_measure_khz(CLOCKS_FC0_SRC_CLK_SYS);
+
+    // if (clk_sys_khz >= CLK_SYS_KHZ - CLK_SYS_KHZ_TOLERANCE
+    //  && clk_sys_khz <= CLK_SYS_KHZ + CLK_SYS_KHZ_TOLERANCE) {
+    //     for(;;){
+    //         blink();
+    //         blink();
+    //         spin(GAP_SPIN);
+    //     }
+    // } else {
+    //     for(;;){
+    //         blink();
+    //         spin(GAP_SPIN);
+    //     }
+    // }
 }
