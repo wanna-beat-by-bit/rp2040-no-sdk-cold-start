@@ -19,7 +19,7 @@ to `main()` is mine, written from the datasheet against raw registers.
 - [x] Frequency counter — measure the clock tree instead of trusting it
 - [x] Crystal oscillator up, `clk_ref` switched onto it
 - [x] Watchdog tick — the timer's microseconds are now actually microseconds
-- [ ] PLL to 125 MHz, `clk_sys` switched onto it
+- [x] PLL to 125 MHz, `clk_sys` switched onto it
 - [ ] `boot2` — cold boot from flash, standing on its own
 - [ ] SWD debug probe
 - [ ] I²C from the datasheet

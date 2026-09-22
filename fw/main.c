@@ -19,6 +19,13 @@ volatile uint32_t initialized = DATA_CANARY;
 
 extern uint32_t __vectors_start;
 
+static uint32_t is_freq_in_range(uint32_t target_khz, uint32_t measured_khz, uint32_t tolerance_percent) {
+      uint32_t margin = target_khz / 100u * tolerance_percent;
+      uint32_t diff = (measured_khz > target_khz) ? (measured_khz - target_khz)
+                                                  : (target_khz - measured_khz);
+      return (diff <= margin) ? 1u : 0u;
+  }
+
 static void panic(uint32_t reason) {
     g_panic_reason = reason;
     for(;;);
@@ -146,6 +153,20 @@ static uint32_t fc0_measure_khz(uint32_t src) {
     return REG(CLOCKS_BASE + CLOCKS_FC0_RESULT) >> CLOCKS_FC0_RESULT_KHZ_LSB;
 }
 
+static void configure_clk_peri(void){
+    // disable clk_peri
+    REG(CLOCKS_BASE + CLOCKS_CLK_PERI_CTRL) &= ~(1u << CLOCKS_CLK_PERI_CTRL_ENABLE_BIT);
+
+    // wire to xosc
+    uint32_t clk_peri_ctrl = REG(CLOCKS_BASE + CLOCKS_CLK_PERI_CTRL); 
+    clk_peri_ctrl &= ~CLOCKS_CLK_PERI_CTRL_AUXSRC_MASK;
+    clk_peri_ctrl |= CLOCKS_CLK_PERI_CTRL_XOSC_CLKSRC << CLOCKS_CLK_PERI_CTRL_AUXSRC_LSB; 
+    REG(CLOCKS_BASE + CLOCKS_CLK_PERI_CTRL) = clk_peri_ctrl;
+
+    // enable clk_peri
+    REG(CLOCKS_BASE + CLOCKS_CLK_PERI_CTRL) |= (1u << CLOCKS_CLK_PERI_CTRL_ENABLE_BIT);
+}
+
 int main(){
     REG(PPB_BASE + SCB_VTOR) = (uint32_t)&__vectors_start;
     REG(PPB_BASE + NVIC_ISER) = (1u << NVIC_ISER_TIMER_IRQ_0);
@@ -190,21 +211,8 @@ int main(){
     pll_sys_init();
     set_clk_sys_pll();
 
+
+    configure_clk_peri();
+
     alarm_set();
-
-    // uint32_t clk_sys_khz = fc0_measure_khz(CLOCKS_FC0_SRC_CLK_SYS);
-
-    // if (clk_sys_khz >= CLK_SYS_KHZ - CLK_SYS_KHZ_TOLERANCE
-    //  && clk_sys_khz <= CLK_SYS_KHZ + CLK_SYS_KHZ_TOLERANCE) {
-    //     for(;;){
-    //         blink();
-    //         blink();
-    //         spin(GAP_SPIN);
-    //     }
-    // } else {
-    //     for(;;){
-    //         blink();
-    //         spin(GAP_SPIN);
-    //     }
-    // }
 }
