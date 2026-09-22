@@ -214,5 +214,19 @@ int main(){
 
     configure_clk_peri();
 
-    alarm_set();
+    // alarm_set();
+
+    uint32_t is_freq_valid = is_freq_in_range(DEFUALT_CLOCK_KHZ, fc0_measure_khz(CLOCKS_FC0_SRC_CLK_PERI), 1);
+    if(is_freq_valid){
+         for(;;){
+             blink();
+             blink();
+             spin(GAP_SPIN);
+         }
+    } else{
+         for(;;){
+             blink();
+             spin(GAP_SPIN);
+         }
+    }
 }
