@@ -17,7 +17,7 @@ volatile uint32_t g_panic_reason;
 volatile uint32_t zeroed;
 volatile uint32_t initialized = DATA_CANARY;
 
-extern uint32_t __vectors_start;
+extern uint32_t __vectors_start__;
 
 static uint32_t is_freq_in_range(uint32_t target_khz, uint32_t measured_khz, uint32_t tolerance_percent) {
       uint32_t margin = target_khz / 100u * tolerance_percent;
@@ -168,7 +168,7 @@ static void configure_clk_peri(void){
 }
 
 int main(){
-    REG(PPB_BASE + SCB_VTOR) = (uint32_t)&__vectors_start;
+    REG(PPB_BASE + SCB_VTOR) = (uint32_t)&__vectors_start__;
     REG(PPB_BASE + NVIC_ISER) = (1u << NVIC_ISER_TIMER_IRQ_0);
 
     REG(RESETS_BASE + APB_ATOMIC_CLR + RESETS_RESET) = (1u << RESETS_RESET_IO_BANK0_LSB)
@@ -214,19 +214,5 @@ int main(){
 
     configure_clk_peri();
 
-    // alarm_set();
-
-    uint32_t is_freq_valid = is_freq_in_range(DEFUALT_CLOCK_KHZ, fc0_measure_khz(CLOCKS_FC0_SRC_CLK_PERI), 1);
-    if(is_freq_valid){
-         for(;;){
-             blink();
-             blink();
-             spin(GAP_SPIN);
-         }
-    } else{
-         for(;;){
-             blink();
-             spin(GAP_SPIN);
-         }
-    }
+    alarm_set();
 }
