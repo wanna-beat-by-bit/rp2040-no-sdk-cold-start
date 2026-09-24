@@ -5,6 +5,7 @@ OBJDUMP = arm-none-eabi-objdump
 READELF = arm-none-eabi-readelf
 NM      = arm-none-eabi-nm
 SIZE    = arm-none-eabi-size
+LINK ?= sram.ld
 
 # -mcpu/-mthumb : Cortex-M0+ has no ARM mode, only Thumb
 # -nostdlib     : no libc, no crt0 from the toolchain — we supply our own
@@ -14,11 +15,11 @@ CFLAGS  = -mcpu=cortex-m0plus -mthumb -nostdlib -ffreestanding -Wall -Wextra -O1
 
 # -T           : our linker script decides every address
 # -Wl,-Map     : write a map file — the record of what landed where, and why
-LDFLAGS = -T fw/sram.ld -Wl,-Map=build/main.map
+LDFLAGS = -T fw/$(LINK) -Wl,-Map=build/main.map
 
 SRCS   = fw/crt0.s fw/main.c fw/vectors.c
-LDFILE = fw/sram.ld
-ELF    = build/main.elf
+LDFILE = fw/$(LINK)
+ELF = build/main-$(basename $(LINK)).elf
 
 .PHONY: all inspect disasm pico-ping load clean
 

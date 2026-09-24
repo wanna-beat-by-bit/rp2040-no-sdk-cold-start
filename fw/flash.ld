@@ -1,7 +1,8 @@
+ENTRY(_start)
 
 MEMORY
 {
-    FLASH (rwx) : ORIGIN = 0x10000000, LENGTH = 2M
+    FLASH  (rx) : ORIGIN = 0x10000000, LENGTH = 2M
     SRAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 264K
 }
 
@@ -11,9 +12,12 @@ SECTIONS
         __boot2_start__ = .;
 
         KEEP(*(.boot2))
+    
+        . = __boot2_start__ + 256;
 
         __boot2_end__ = .;
     } > FLASH
+    ASSERT(__boot2_end__ - __boot2_start__ <= 256, "boot2 exceeds 256 bytes")
 
     .vectors : {
         . = ALIGN(256);
@@ -24,7 +28,7 @@ SECTIONS
         . = ALIGN(4);
 
         __vectors_end__ = .;
-    } > SRAM
+    } > FLASH
 
     .text : {
         . = ALIGN(4);
@@ -52,7 +56,7 @@ SECTIONS
         . = ALIGN(4);
         __data_end__ = .;
     } > SRAM AT > FLASH
-    __load_addr__ = LOADADDR(.data);
+    __data_load__ = LOADADDR(.data);
 
     .bss : {
         . = ALIGN(4);
@@ -65,6 +69,8 @@ SECTIONS
         . = ALIGN(4);
 
         __bss_end__ = .;
-    } > FLASH
+    } > SRAM
 
 }
+
+__stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
