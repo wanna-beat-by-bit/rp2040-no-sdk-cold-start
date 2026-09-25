@@ -13,7 +13,8 @@ SECTIONS
 
         KEEP(*(.boot2))
     
-        . = __boot2_start__ + 256;
+        . = __boot2_start__ + 256 
+        ;
 
         __boot2_end__ = .;
     } > FLASH
