@@ -168,6 +168,7 @@ static void configure_clk_peri(void){
 }
 
 int main(){
+    // start
     REG(PPB_BASE + SCB_VTOR) = (uint32_t)&__vectors_start__;
     REG(PPB_BASE + NVIC_ISER) = (1u << NVIC_ISER_TIMER_IRQ_0);
 
