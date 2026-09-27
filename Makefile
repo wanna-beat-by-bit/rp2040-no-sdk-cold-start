@@ -18,10 +18,13 @@ CFLAGS  = -mcpu=cortex-m0plus -mthumb -nostdlib -ffreestanding -Wall -Wextra -O1
 LDFLAGS = -T fw/$(LINK) -Wl,-Map=build/main.map
 
 SRCS   = fw/crt0.s fw/main.c fw/vectors.c
+ifeq ($(LINK),flash.ld)
+  SRCS += fw/boot2.s
+endif
 LDFILE = fw/$(LINK)
 ELF = build/main-$(basename $(LINK)).elf
 
-.PHONY: all inspect disasm pico-ping load clean
+.PHONY: all inspect disasm pico-ping load clean flash
 
 all: $(ELF)
 
@@ -59,3 +62,6 @@ load: $(ELF)
 
 clean:
 	rm -rf build
+
+flash:
+	$(MAKE) LINK=flash.ld
