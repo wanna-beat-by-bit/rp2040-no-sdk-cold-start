@@ -12,10 +12,10 @@ SECTIONS
         __boot2_start__ = .;
 
         KEEP(*(.boot2))
+        __boot2_end__ = .;
     
         . = __boot2_start__ + 256;
 
-        __boot2_end__ = .;
     } > FLASH
     ASSERT(__boot2_end__ - __boot2_start__ <= 256, "boot2 exceeds 256 bytes")
 
