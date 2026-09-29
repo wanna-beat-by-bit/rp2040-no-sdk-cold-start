@@ -6,6 +6,7 @@ READELF = arm-none-eabi-readelf
 NM      = arm-none-eabi-nm
 SIZE    = arm-none-eabi-size
 LINK ?= sram.ld
+HOSTCC = cc
 
 # -mcpu/-mthumb : Cortex-M0+ has no ARM mode, only Thumb
 # -nostdlib     : no libc, no crt0 from the toolchain — we supply our own
@@ -24,7 +25,7 @@ endif
 LDFILE = fw/$(LINK)
 ELF = build/main-$(basename $(LINK)).elf
 
-.PHONY: all inspect disasm pico-ping load clean flash
+.PHONY: all inspect disasm pico-ping load clean flash crc
 
 all: $(ELF)
 
@@ -65,3 +66,9 @@ clean:
 
 flash:
 	$(MAKE) LINK=flash.ld
+
+build/crc32: tools/crc32.c
+	@mkdir -p build
+	$(HOSTCC)  -Wall -Wextra -O2 -o $@ $<
+
+crc: build/crc32
