@@ -20,18 +20,26 @@ to `main()` is mine, written from the datasheet against raw registers.
 - [x] Crystal oscillator up, `clk_ref` switched onto it
 - [x] Watchdog tick — the timer's microseconds are now actually microseconds
 - [x] PLL to 125 MHz, `clk_sys` switched onto it
-- [x] `boot2` — cold boot from flash, standing on its own
+- [x] `boot2` — QSPI configuration + CRC32 tool for boot ROM validatoin + binary patching
+- [x] Cold boot — runs on power alone, no host, no BOOTSEL
 - [ ] SWD debug probe
 - [ ] I²C from the datasheet
 - [ ] Display driver
 
 ## Build
 
+Two link targets. SRAM is the fast iteration path; flash is to standalone usage without host flashing.
+
 ```
-make            # -> build/main.elf
-make load       # picotool load -x
-make pico-ping  # is the ROM bootloader in charge, or is my code running?
-make disasm     # what the compiler actually emitted
+make             # -> build/main-sram.elf
+make load        # picotool load -x, straight into SRAM
+
+make flash       # -> build/main-flash-crc.bin, boot2 linked in and checksummed
+make flash-load  # write it to flash at 0x10000000
+
+make pico-ping   # is the ROM bootloader in charge, or is my code running?
+make inspect     # did the linker put things where the script said?
+make disasm      # what the compiler actually emitted
 ```
 
 Host tools (`picotool`, `gdb`) run on the Mac, not on the chip.
