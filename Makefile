@@ -2,11 +2,12 @@
 
 CC      = arm-none-eabi-gcc
 OBJDUMP = arm-none-eabi-objdump
+OBJCOPY = arm-none-eabi-objcopy
 READELF = arm-none-eabi-readelf
 NM      = arm-none-eabi-nm
 SIZE    = arm-none-eabi-size
-LINK ?= sram.ld
-HOSTCC = cc
+HOSTCC  = cc
+LINK   ?= sram.ld
 
 # -mcpu/-mthumb : Cortex-M0+ has no ARM mode, only Thumb
 # -nostdlib     : no libc, no crt0 from the toolchain — we supply our own
@@ -14,25 +15,49 @@ HOSTCC = cc
 # -O1 -g        : optimised enough to be realistic, with debug info for CP8
 CFLAGS  = -mcpu=cortex-m0plus -mthumb -nostdlib -ffreestanding -Wall -Wextra -O1 -g
 
+SRCS   = fw/crt0.s fw/main.c fw/vectors.c
+LDFILE = fw/$(LINK)
+
+TARGET_NAME = build/main-$(basename $(LINK))
+ELF         = $(TARGET_NAME).elf
+BIN         = $(TARGET_NAME).bin
+PATCHED_BIN = $(TARGET_NAME)-crc.bin
+MAP         = $(TARGET_NAME).map
+CRC         = build/crc32
+
 # -T           : our linker script decides every address
 # -Wl,-Map     : write a map file — the record of what landed where, and why
-LDFLAGS = -T fw/$(LINK) -Wl,-Map=build/main.map
+LDFLAGS = -T $(LDFILE) -Wl,-Map=$(MAP)
 
-SRCS   = fw/crt0.s fw/main.c fw/vectors.c
+# boot2 and the CRC32 at 0xfc exist only for the flash layout. The SRAM image
+# reserves nothing at that offset, so patching it would overwrite real code.
 ifeq ($(LINK),flash.ld)
-  SRCS += fw/boot2.s
+  SRCS  += fw/boot2.s
+  IMAGE  = $(PATCHED_BIN)
+else
+  IMAGE  =
 endif
-LDFILE = fw/$(LINK)
-ELF = build/main-$(basename $(LINK)).elf
 
-.PHONY: all inspect disasm pico-ping load clean flash crc
+.PHONY: all inspect disasm pico-ping load clean flash flash-load crc
 
-all: $(ELF)
+all: $(ELF) $(IMAGE)
 
 $(ELF): $(SRCS) $(LDFILE)
 	@mkdir -p build
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRCS) -o $@
 	$(SIZE) $@
+
+$(BIN): $(ELF)
+	$(OBJCOPY) -O binary $< $@
+
+$(PATCHED_BIN): $(BIN) $(CRC)
+	$(CRC) $< $@
+
+$(CRC): tools/crc32.c
+	@mkdir -p build
+	$(HOSTCC) -Wall -Wextra -O2 -o $@ $<
+
+crc: $(CRC)
 
 # Did the linker put things where the script said? The check you can't do by reading code.
 inspect: $(ELF)
@@ -58,17 +83,21 @@ pico-ping:
 		echo "ABSENT   — no RP2 bootloader; your code is running (or board unplugged)"; \
 	fi
 
+# A raw .bin carries no addresses — objcopy stripped them — so the flash path
+# has to say where the image goes. The ELF still carries its own.
+ifeq ($(LINK),flash.ld)
+load: $(PATCHED_BIN)
+	picotool load -x $< -t bin -o 0x10000000
+else
 load: $(ELF)
-	picotool load -x $(ELF)
-
-clean:
-	rm -rf build
+	picotool load -x $<
+endif
 
 flash:
 	$(MAKE) LINK=flash.ld
 
-build/crc32: tools/crc32.c
-	@mkdir -p build
-	$(HOSTCC)  -Wall -Wextra -O2 -o $@ $<
+flash-load:
+	$(MAKE) LINK=flash.ld load
 
-crc: build/crc32
+clean:
+	rm -rf build
