@@ -214,5 +214,21 @@ int main(){
 
     configure_clk_peri();
 
-    alarm_set();
+    // alarm_set();
+
+    if ( (initialized == DATA_CANARY) && (zeroed == 0) ){
+        for(;;){
+            blink();
+            blink();
+            blink();
+            blink();
+            blink();
+            spin(GAP_SPIN);
+        }
+    } else{
+        for(;;){
+            blink();
+            spin(GAP_SPIN);
+        }
+    }
 }
